@@ -1,19 +1,27 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
+const functions = require("firebase-functions/v1");
+const admin = require("firebase-admin");
 
-const {onRequest} = require("firebase-functions/v2/https");
-const logger = require("firebase-functions/logger");
+admin.initializeApp();
+const db = admin.firestore();
+// const auth = admin.auth();
 
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
+exports.updateKuzelliumPrice =
+functions.pubsub.schedule("every 5 minutes")
+    .onRun(async (context) => {
+      const ref = db.collection("marketData").doc("currentPrices");
+      const doc = await ref.get();
 
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+      if (!doc.exists) return;
+
+      const kuzelliumPrice = doc.data().kuzellium.price;
+      const changePercent = (Math.random() * 0.6 - 0.3); // ±30%変動
+      const newPrice = Math.max(1, kuzelliumPrice * (1 + changePercent));
+
+      await ref.update({
+        "kuzellium.price": newPrice,
+        "kuzellium.changePercent": changePercent * 100,
+        "kuzellium.updatedAt": admin.firestore.Timestamp.now(),
+      });
+
+      console.log(`Kuzellium price updated: ${newPrice}`);
+    });
