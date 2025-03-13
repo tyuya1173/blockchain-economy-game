@@ -45,3 +45,13 @@ functions
 
       console.log(`Gold price updated: ${newPrice}`);
     });
+
+exports.startGame = functions.https.onRequest(async (req, res) => {
+  await db.collection("gameState").doc("status").set({
+    status: "active",
+    currentPhase: 1,
+    startTime: admin.firestore.Timestamp.now(),
+  });
+
+  res.json({message: "Game started"});
+});
