@@ -55,3 +55,12 @@ exports.startGame = functions.https.onRequest(async (req, res) => {
 
   res.json({message: "Game started"});
 });
+
+exports.endGame = functions.https.onRequest(async (req, res) => {
+  await db.collection("gameState").doc("status").update({
+    status: "finished",
+    endTime: admin.firestore.Timestamp.now(),
+  });
+
+  res.json({message: "Game ended"});
+});
