@@ -98,3 +98,25 @@ exports.onNewUser = functions.auth.user().onCreate(async (user) => {
 
   console.log(`New user ${user.uid} created with initial assets`);
 });
+
+exports.onTradeComplete =
+functions
+    .firestore
+    .document("transactions/{transactionId}")
+    .onCreate(async (snap, context) => {
+      const transaction = snap.data();
+      const blockRef = db.collection("blocks").doc();
+
+      await blockRef.set({
+        index: context.params.transactionId,
+        timestamp: admin.firestore.Timestamp.now(),
+        transactions: [transaction],
+        previousHash: "TODO: Calculate previous block hash",
+        hash: "TODO: Calculate block hash",
+        nonce: 0,
+      });
+
+      console.log(
+          `Transaction ${context.params.transactionId} 
+        added to blockchain`);
+    });
