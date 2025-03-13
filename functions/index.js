@@ -25,3 +25,23 @@ functions.pubsub.schedule("every 5 minutes")
 
       console.log(`Kuzellium price updated: ${newPrice}`);
     });
+
+exports.updateGoldPrice =
+functions
+    .pubsub
+    .schedule("every 15 minutes").onRun(async (context) => {
+      const ref = db.collection("marketData").doc("currentPrices");
+      const doc = await ref.get();
+
+      if (!doc.exists) return;
+
+      const goldPrice = doc.data().gold.price;
+      const newPrice = goldPrice * 1.10; // 10%増加
+
+      await ref.update({
+        "gold.price": newPrice,
+        "gold.updatedAt": admin.firestore.Timestamp.now(),
+      });
+
+      console.log(`Gold price updated: ${newPrice}`);
+    });
