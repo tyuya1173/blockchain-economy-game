@@ -120,3 +120,28 @@ functions
           `Transaction ${context.params.transactionId} 
         added to blockchain`);
     });
+
+exports.onMiningSuccess =
+functions
+    .firestore
+    .document("miningChallenges/{challengeId}/submissions/{submissionId}")
+    .onCreate(async (snap, context) => {
+      const submission = snap.data();
+      const userRef = db.collection("users").doc(submission.userId);
+      const userDoc = await userRef.get();
+
+      if (!userDoc.exists) return;
+
+      const newBalance =
+      (userDoc.data().assets.kuzellium || 0) +
+      submission.reward;
+
+      await userRef.update({
+        "assets.kuzellium": newBalance,
+      });
+
+      console.log(
+          `User ${submission.userId} 
+        mined successfully, reward: ${submission.reward}`,
+      );
+    });
