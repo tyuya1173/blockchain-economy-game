@@ -83,3 +83,18 @@ exports.advancePhase = functions.https.onRequest(async (req, res) => {
 
   res.json({message: `Phase advanced to ${currentPhase + 1}`});
 });
+
+exports.onNewUser = functions.auth.user().onCreate(async (user) => {
+  await db.collection("users").doc(user.uid).set({
+    username: user.displayName || "Anonymous",
+    role: "player",
+    assets: {
+      labDollar: 1000,
+      kuzellium: 5,
+      gold: 1,
+    },
+    createdAt: admin.firestore.Timestamp.now(),
+  });
+
+  console.log(`New user ${user.uid} created with initial assets`);
+});
