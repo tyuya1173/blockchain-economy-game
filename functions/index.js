@@ -64,3 +64,22 @@ exports.endGame = functions.https.onRequest(async (req, res) => {
 
   res.json({message: "Game ended"});
 });
+
+exports.advancePhase = functions.https.onRequest(async (req, res) => {
+  const gameRef = db.collection("gameState").doc("status");
+  const doc = await gameRef.get();
+
+  if (!doc.exists) return res.status(404).json({error: "Game not found"});
+
+  const currentPhase = doc.data().currentPhase;
+
+  if (currentPhase >= 5) {
+    return res.json(
+        {message: "Game already in final phase"},
+    );
+  }
+
+  await gameRef.update({currentPhase: currentPhase + 1});
+
+  res.json({message: `Phase advanced to ${currentPhase + 1}`});
+});
