@@ -1,6 +1,6 @@
 <template>
     <div class="asset-summary">
-      <v-card flat tile>
+      <v-card flat tile class="asset-summary-card">
         <v-card-title class="pb-0">
           <span class="headline font-weight-bold">資産状況</span>
         </v-card-title>
@@ -22,22 +22,22 @@
             </div>
           </div>
   
-          <v-row no-gutters class="mt-3">
-            <v-col cols="4" class="text-center">
+          <v-row no-gutters class="asset-grid">
+            <v-col cols="4" class="asset-column">
               <div class="asset-item">
                 <div class="asset-label">ラボドル</div>
                 <div class="asset-value">{{ formatNumber(userAssets.labDollar) }} LD</div>
                 <div class="asset-conversion">≈ {{ formatNumber(userAssets.labDollar * 100) }}円</div>
               </div>
             </v-col>
-            <v-col cols="4" class="text-center">
+            <v-col cols="4" class="asset-column">
               <div class="asset-item">
                 <div class="asset-label">クーゼリアム</div>
                 <div class="asset-value">{{ formatNumber(userAssets.kuzellium) }} KZM</div>
                 <div class="asset-conversion">≈ {{ formatNumber(userAssets.kuzellium * marketPrices.kuzellium) }}円</div>
               </div>
             </v-col>
-            <v-col cols="4" class="text-center">
+            <v-col cols="4" class="asset-column">
               <div class="asset-item">
                 <div class="asset-label">ゴールド</div>
                 <div class="asset-value">{{ formatNumber(userAssets.gold) }} AU</div>
@@ -94,15 +94,38 @@
   </script>
   
   <style scoped>
+  .asset-summary-card {
+    /* スマートフォンでの境界線と影を追加 */
+    border: 1px solid rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
   .total-assets-container {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 16px;
+    padding: 0 8px;
   }
   
   .total-assets-change {
     font-weight: bold;
+  }
+  
+  .asset-grid {
+    /* グリッドの境界線を追加 */
+    border-top: 1px solid rgba(0,0,0,0.1);
+  }
+
+  .asset-column {
+    /* 各カラムに境界線を追加 */
+    border-right: 1px solid rgba(0,0,0,0.1);
+    padding: 8px 0;
+  }
+
+  .asset-column:last-child {
+    /* 最後のカラムは右境界線を削除 */
+    border-right: none;
   }
   
   .asset-item {
@@ -126,5 +149,17 @@
   .asset-conversion {
     color: rgba(0, 0, 0, 0.6);
     font-size: 0.75rem;
+  }
+
+  /* スマートフォン向けの微調整 */
+  @media (max-width: 600px) {
+    .total-assets-container {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .total-assets-change {
+      margin-top: 8px;
+    }
   }
   </style>
