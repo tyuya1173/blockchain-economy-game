@@ -16,7 +16,7 @@
       <div class="news-container">
         <v-list two-line>
           <template v-for="(item, index) in newsItems">
-            <v-list-item :key="index" class="news-item">
+            <v-list-item :key="`item-${index}`" class="news-item">
               <v-list-item-avatar tile color="grey lighten-3" class="news-thumbnail">
                 <v-icon :color="item.icon.color">{{ item.icon.name }}</v-icon>
               </v-list-item-avatar>
@@ -41,8 +41,8 @@
             </v-list-item>
             
             <v-divider
-              v-if="index < newsItems.length - 1"
               :key="`divider-${index}`"
+              v-if="index < newsItems.length - 1"
             ></v-divider>
           </template>
         </v-list>
@@ -134,6 +134,7 @@
     text-overflow: ellipsis;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2; /* Standard property for compatibility */
     -webkit-box-orient: vertical;
     line-height: 1.4;
   }

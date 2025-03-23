@@ -38,7 +38,8 @@
   </template>
   
   <script>
-  import PriceChart from '@/components/market/PriceChart.vue';
+//   import PriceChart from '@/components/market/PriceChart.vue';
+  import PriceChart from '@/components/dashboard/MarketSummary.vue';
   import AssetPriceCard from '@/components/market/AssetPriceCard.vue';
   import MarketTrends from '@/components/market/MarketTrends.vue';
   import EventLog from '@/components/market/EventLog.vue';
