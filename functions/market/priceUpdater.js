@@ -15,13 +15,13 @@ const PRICE_CONFIG = {
     initialPrice: 500,   // 初期価格
     volatility: 0.8,     // ±80%の変動幅
     minPrice: 100,       // 最小価格
-    updateInterval: '* * * * *'  // 1分ごとに実行（基本スケジュール）
+    updateInterval: '* * * * *'  // 1分ごとに実行
   },
   gold: {
     initialPrice: 8000,  // 初期価格
     volatility: 0.1,     // ±10%の緩やかな変動
     minPrice: 4000,      // 最小価格
-    updateInterval: '* * * * *', // 1分ごとに実行（基本スケジュール）
+    updateInterval: '* * * * *', // 1分ごとに実行
     baseUptrend: 0.05,   // 基本上昇率（5%）
     uptrendVariation: 0.03 // 上昇率の変動幅（±3%）
   }
@@ -87,7 +87,7 @@ exports.scheduleUpdateTrigger = functions.pubsub
   .schedule('every 1 minutes')
   .timeZone('Asia/Tokyo')
   .onRun(async (context) => {
-    console.log('===== スケジューラートリガー関数が実行されました =====');
+    console.log('===== 1分ごとの価格更新スケジューラー実行 =====');
     console.log('context:', JSON.stringify(context));
     
     const rtdb = admin.database();
@@ -95,13 +95,8 @@ exports.scheduleUpdateTrigger = functions.pubsub
     try {
       const timestamp = Date.now();
       const now = new Date();
-      const minute = now.getMinutes();
       
-      // 秒数を常に0に設定
-      const second = 0;
-      
-      console.log(`現在時刻: ${now.toISOString()} (分: ${minute}, 秒: ${now.getSeconds()})`);
-      console.log(`トリガー秒数を0に設定します`);
+      console.log(`現在時刻: ${now.toISOString()}`);
       
       // 現在のトリガー値を確認
       const currentTriggerSnapshot = await rtdb.ref('triggers/priceUpdate').once('value');
@@ -111,12 +106,11 @@ exports.scheduleUpdateTrigger = functions.pubsub
       console.log('triggers/priceUpdate に書き込み中...');
       await rtdb.ref('triggers/priceUpdate').set({
         timestamp: timestamp,
-        minute: minute,
-        second: second, // 常に0秒に設定
+        minute: now.getMinutes(),
         source: 'scheduler'
       });
       
-      console.log(`Price update trigger set at ${new Date(timestamp).toISOString()} with second=0`);
+      console.log(`Price update trigger set at ${new Date(timestamp).toISOString()}`);
       
       return null;
     } catch (error) {
@@ -125,11 +119,11 @@ exports.scheduleUpdateTrigger = functions.pubsub
     }
   });
 
-// RTDBトリガーを使用してクーゼリアム価格を10秒間隔で更新
+// RTDBトリガーを使用してクーゼリアム価格を1分間隔で更新
 exports.updateKuzelliumPriceOnTrigger = functions.database
   .ref('triggers/priceUpdate')
   .onWrite(async (change, context) => {
-    console.log('===== クーゼリアム価格更新関数が実行されました =====');
+    console.log('===== クーゼリアム価格更新関数が実行されました (1分間隔) =====');
     console.log('context:', JSON.stringify(context));
     
     const rtdb = admin.database();
@@ -141,17 +135,9 @@ exports.updateKuzelliumPriceOnTrigger = functions.database
         return null;
       }
       
-      // トリガー時刻を取得
+      // トリガーデータを取得
       const triggerData = change.after.val();
       console.log('トリガーデータ:', JSON.stringify(triggerData));
-      
-      // 現在の秒数に基づいて更新頻度を制御
-      const currentSecond = triggerData.second || 0;
-      
-      if (currentSecond % 10 !== 0) {
-        console.log(`秒数条件不一致のためスキップ: ${currentSecond} (10の倍数である必要があります)`);
-        return null;
-      }
       
       // 現在の価格を確認
       const currentPriceSnapshot = await rtdb.ref('prices/kuzellium').once('value');
@@ -214,7 +200,7 @@ exports.updateKuzelliumPriceOnTrigger = functions.database
         // クリーンアップエラーは処理を中断しない
       }
       
-      console.log(`クーゼリアム価格更新完了: ¥${priceResult.price.toFixed(2)} (${priceResult.changePercent.toFixed(2)}%) at second ${currentSecond}`);
+      console.log(`クーゼリアム価格更新完了: ¥${priceResult.price.toFixed(2)} (${priceResult.changePercent.toFixed(2)}%)`);
       return null;
     } catch (error) {
       console.error('クーゼリアム価格更新関数の実行エラー:', error);
@@ -222,11 +208,11 @@ exports.updateKuzelliumPriceOnTrigger = functions.database
     }
   });
 
-// RTDBトリガーを使用して金価格を30秒間隔で更新
+// RTDBトリガーを使用して金価格を1分間隔で更新
 exports.updateGoldPriceOnTrigger = functions.database
   .ref('triggers/priceUpdate')
   .onWrite(async (change, context) => {
-    console.log('===== ゴールド価格更新関数が実行されました =====');
+    console.log('===== ゴールド価格更新関数が実行されました (1分間隔) =====');
     console.log('context:', JSON.stringify(context));
     
     const rtdb = admin.database();
@@ -238,17 +224,9 @@ exports.updateGoldPriceOnTrigger = functions.database
         return null;
       }
       
-      // トリガー時刻を取得
+      // トリガーデータを取得
       const triggerData = change.after.val();
       console.log('トリガーデータ:', JSON.stringify(triggerData));
-      
-      // 現在の秒数に基づいて更新頻度を制御
-      const currentSecond = triggerData.second || 0;
-      
-      if (currentSecond % 30 !== 0) {
-        console.log(`秒数条件不一致のためスキップ: ${currentSecond} (30の倍数である必要があります)`);
-        return null;
-      }
       
       // 現在の価格を確認
       const currentPriceSnapshot = await rtdb.ref('prices/gold').once('value');
@@ -311,7 +289,7 @@ exports.updateGoldPriceOnTrigger = functions.database
         // クリーンアップエラーは処理を中断しない
       }
       
-      console.log(`ゴールド価格更新完了: ¥${priceResult.price.toFixed(2)} (${priceResult.changePercent.toFixed(2)}%) at second ${currentSecond}`);
+      console.log(`ゴールド価格更新完了: ¥${priceResult.price.toFixed(2)} (${priceResult.changePercent.toFixed(2)}%)`);
       return null;
     } catch (error) {
       console.error('ゴールド価格更新関数の実行エラー:', error);
@@ -424,7 +402,6 @@ exports.initializeMarketPrices = functions.https.onRequest(async (req, res) => {
       await rtdb.ref('triggers/priceUpdate').set({
         timestamp: timestamp,
         minute: new Date().getMinutes(),
-        second: new Date().getSeconds(),
         reset: true
       });
       console.log('更新トリガーのリセット完了');
@@ -471,7 +448,6 @@ exports.manualTrigger = functions.https.onRequest(async (req, res) => {
     await rtdb.ref('triggers/priceUpdate').set({
       timestamp: timestamp,
       minute: now.getMinutes(),
-      second: now.getSeconds(),
       source: 'manual'
     });
     
@@ -897,8 +873,8 @@ exports.monitorPrices = functions.https.onRequest(async (req, res) => {
       results.gold.lastUpdated = new Date(goldData.updatedAt).toISOString();
       results.gold.minutesSinceUpdate = Math.round(minutesSinceUpdate);
       
-      // 15分以上更新がない場合は手動で更新
-      if (minutesSinceUpdate >= 15) {
+      // 5分以上更新がない場合は手動で更新（金も1分間隔なので、監視も5分に変更）
+      if (minutesSinceUpdate >= 5) {
         console.log(`ゴールド価格が${minutesSinceUpdate.toFixed(1)}分間更新されていません。手動で更新します。`);
         results.gold.status = 'stale';
         results.gold.action = 'updated';
@@ -934,8 +910,8 @@ exports.monitorPrices = functions.https.onRequest(async (req, res) => {
       lastUpdated: triggerData ? new Date(triggerData.timestamp).toISOString() : null
     };
     
-    // トリガーが存在しないか、30分以上更新されていない場合は更新
-    if (!triggerData || (timestamp - triggerData.timestamp) > (30 * 60 * 1000)) {
+    // トリガーが存在しないか、5分以上更新されていない場合は更新
+    if (!triggerData || (timestamp - triggerData.timestamp) > (5 * 60 * 1000)) {
       console.log('トリガーが存在しないか、古くなっています。更新します。');
       results.trigger.status = 'stale';
       results.trigger.action = 'updated';
@@ -943,7 +919,6 @@ exports.monitorPrices = functions.https.onRequest(async (req, res) => {
       await rtdb.ref('triggers/priceUpdate').set({
         timestamp: timestamp,
         minute: now.getMinutes(),
-        second: now.getSeconds(),
         source: 'monitor'
       });
     } else {
@@ -1030,7 +1005,7 @@ exports.getSystemStatus = functions.https.onRequest(async (req, res) => {
           status.prices[assetType] = {
             lastUpdated: new Date(lastUpdate).toISOString(),
             minutesAgo: Math.round(minutesAgo * 10) / 10,
-            fresh: minutesAgo < (assetType === 'kuzellium' ? 5 : 15)
+            fresh: minutesAgo < 5 // どちらも5分以内を新鮮と判断（1分間隔なので）
           };
         } else {
           status.prices[assetType] = {
