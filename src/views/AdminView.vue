@@ -128,6 +128,7 @@
   import { logout, onAuthStateChanged } from '@/firebase/auth';
   import { getUser } from '@/firebase/firestore';
   import { db } from '@/firebase/index';
+  import { getFunctions, httpsCallable } from 'firebase/functions';
   import { 
     collection, 
     doc, 
@@ -149,6 +150,27 @@
       SystemLog
     },
     name: 'AdminView',
+    setup() {
+      // Get a reference to the Firebase Functions instance
+      const functions = getFunctions();
+      
+      // Create callable references to your Cloud Functions
+      const startGameFunction = httpsCallable(functions, 'startGame');
+      const endGameFunction = httpsCallable(functions, 'endGame');
+      const advancePhaseFunction = httpsCallable(functions, 'advancePhase');
+      const triggerEventFunction = httpsCallable(functions, 'triggerEvent');
+      const cancelEventFunction = httpsCallable(functions, 'cancelEvent');
+      const updatePriceFunction = httpsCallable(functions, 'updatePrice');
+      
+      return {
+        startGameFunction,
+        endGameFunction,
+        advancePhaseFunction,
+        triggerEventFunction,
+        cancelEventFunction,
+        updatePriceFunction
+      };
+    },
     data() {
       return {
         loading: true,
@@ -508,7 +530,6 @@
       
       // ゲーム開始
       async startGame() {
-        // Cloud Functionを呼び出す実装
         try {
           if (!this.isAdmin) return;
           
@@ -517,15 +538,34 @@
             return;
           }
           
-          // 実際の実装ではCloud Functionを呼び出す
-          console.log('ゲーム開始関数を呼び出し', this.selectedUsers);
-          // 選択されたユーザーIDをパラメータとして渡す
-          // await someFunction({ participantIds: this.selectedUsers });
+          // ゲーム開始前の確認
+          const confirmStart = confirm(`${this.selectedUsers.length}人のユーザーでゲームを開始します。よろしいですか？`);
+          if (!confirmStart) return;
           
-          // この後リロードなどで状態を更新
+          // ローディング状態を設定
+          this.loading = true;
+          
+          // Cloud Functionを呼び出す
+          const result = await this.startGameFunction({ participantIds: this.selectedUsers });
+          
+          // 成功時のメッセージ表示
+          alert(result.data.message);
+          
+          // ゲーム状態を再取得
           await this.fetchGameStatus();
+          
+          // データを更新
+          await Promise.all([
+            this.fetchEvents(),
+            this.fetchUsers(),
+            this.fetchMarketPrices()
+          ]);
+          
+          this.loading = false;
         } catch (error) {
           console.error('ゲーム開始に失敗しました:', error);
+          alert(`ゲーム開始に失敗しました: ${error.message || '不明なエラー'}`);
+          this.loading = false;
         }
       },
       
@@ -534,10 +574,39 @@
         try {
           if (!this.isAdmin) return;
           
-          console.log('ゲーム終了関数を呼び出し');
+          // 終了前の確認
+          const confirmEnd = confirm('ゲームを終了し、最終結果を集計します。よろしいですか？');
+          if (!confirmEnd) return;
+          
+          // ローディング状態を設定
+          this.loading = true;
+          
+          // Cloud Functionを呼び出す
+          const result = await this.endGameFunction();
+          
+          // 成功時のメッセージ表示
+          alert(result.data.message);
+          
+          // ゲーム状態を再取得
           await this.fetchGameStatus();
+          
+          // データを更新
+          await Promise.all([
+            this.fetchEvents(),
+            this.fetchUsers()
+          ]);
+          
+          this.loading = false;
+          
+          // 結果表示（必要な場合）
+          if (result.data.rankings && result.data.rankings.length > 0) {
+            // ここでランキング表示などの処理を行う
+            console.log('ゲーム結果:', result.data.rankings);
+          }
         } catch (error) {
           console.error('ゲーム終了に失敗しました:', error);
+          alert(`ゲーム終了に失敗しました: ${error.message || '不明なエラー'}`);
+          this.loading = false;
         }
       },
       
@@ -546,10 +615,33 @@
         try {
           if (!this.isAdmin) return;
           
-          console.log('フェーズ進行関数を呼び出し');
+          // フェーズ進行前の確認
+          const confirmAdvance = confirm(`フェーズ${this.currentPhase}からフェーズ${this.currentPhase + 1}に進みます。よろしいですか？`);
+          if (!confirmAdvance) return;
+          
+          // ローディング状態を設定
+          this.loading = true;
+          
+          // Cloud Functionを呼び出す
+          const result = await this.advancePhaseFunction();
+          
+          // 成功時のメッセージ表示
+          alert(result.data.message);
+          
+          // ゲーム状態を再取得
           await this.fetchGameStatus();
+          
+          // データを更新
+          await Promise.all([
+            this.fetchEvents(),
+            this.fetchUsers()
+          ]);
+          
+          this.loading = false;
         } catch (error) {
           console.error('フェーズ進行に失敗しました:', error);
+          alert(`フェーズ進行に失敗しました: ${error.message || '不明なエラー'}`);
+          this.loading = false;
         }
       },
       
@@ -588,12 +680,30 @@
         try {
           if (!this.isAdmin) return;
           
-          console.log('価格更新関数を呼び出し:', assetType, newPrice);
+          const confirmUpdate = confirm(`${assetType}の価格を${newPrice}円に更新しますか？`);
+          if (!confirmUpdate) return;
+          
+          this.loading = true;
+          
+          // Cloud Functionを呼び出す
+          const result = await this.updatePriceFunction({ 
+            assetType,
+            price: newPrice
+          });
+          
+          // 成功時のメッセージ表示
+          alert(result.data.message || '価格を更新しました');
+          
+          // 市場価格を再取得
           await this.fetchMarketPrices();
+          
+          this.loading = false;
         } catch (error) {
           console.error('価格更新に失敗しました:', error);
+          alert(`価格更新に失敗しました: ${error.message || '不明なエラー'}`);
+          this.loading = false;
         }
-      }
+      },
     }
   };
   </script>
