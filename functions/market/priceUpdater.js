@@ -297,144 +297,6 @@ exports.updateGoldPriceOnTrigger = functions.database
     }
   });
 
-// 初期価格設定関数（ゲーム開始時やリセット時に使用）
-exports.initializeMarketPrices = functions.https.onRequest(async (req, res) => {
-  console.log('===== 市場価格初期化関数が実行されました =====');
-  console.log('リクエストヘッダー:', req.headers);
-  console.log('リクエストメソッド:', req.method);
-  console.log('リクエストクエリ:', req.query);
-  
-  try {
-    // Realtime Databaseインスタンス
-    const rtdb = admin.database();
-    
-    // 価格をリセットする前に確認（オプション）
-    const confirmReset = req.query.confirm === 'true';
-    if (!confirmReset) {
-      console.log('確認パラメータなしでリクエストされました');
-      res.status(400).json({ 
-        error: '確認が必要です', 
-        message: '価格をリセットするには、?confirm=true パラメータを追加してください' 
-      });
-      return;
-    }
-    
-    const timestamp = Date.now();
-    
-    // データベースの接続をテスト
-    try {
-      const testSnapshot = await rtdb.ref('.info/connected').once('value');
-      console.log('データベース接続状態:', testSnapshot.val());
-    } catch (connError) {
-      console.error('データベース接続テストエラー:', connError);
-    }
-    
-    // 既存の価格履歴をクリア
-    console.log('既存の価格履歴をクリア中...');
-    try {
-      await rtdb.ref('priceHistory').remove();
-      console.log('既存の価格履歴をクリア完了');
-    } catch (removeError) {
-      console.error('価格履歴クリアエラー:', removeError);
-    }
-    
-    // クーゼリアムの初期価格
-    const kuzelliumPrice = PRICE_CONFIG.kuzellium.initialPrice;
-    
-    // 金の初期価格
-    const goldPrice = PRICE_CONFIG.gold.initialPrice;
-    
-    // 現在の価格を初期化
-    console.log('クーゼリアム価格を初期化中...');
-    try {
-      await rtdb.ref('prices/kuzellium').set({
-        price: kuzelliumPrice,
-        initialPrice: kuzelliumPrice,
-        changePercent: 0,
-        updatedAt: timestamp
-      });
-      console.log('クーゼリアム価格の初期化完了');
-    } catch (kuzelliumError) {
-      console.error('クーゼリアム価格初期化エラー:', kuzelliumError);
-      throw kuzelliumError;
-    }
-    
-    console.log('ゴールド価格を初期化中...');
-    try {
-      await rtdb.ref('prices/gold').set({
-        price: goldPrice,
-        initialPrice: goldPrice,
-        changePercent: 0,
-        updatedAt: timestamp
-      });
-      console.log('ゴールド価格の初期化完了');
-    } catch (goldError) {
-      console.error('ゴールド価格初期化エラー:', goldError);
-      throw goldError;
-    }
-    
-    // 価格履歴の初期データ作成
-    console.log('クーゼリアム価格履歴を初期化中...');
-    try {
-      await rtdb.ref(`priceHistory/kuzellium/${timestamp}`).set({
-        price: kuzelliumPrice,
-        timestamp: timestamp
-      });
-      console.log('クーゼリアム価格履歴の初期化完了');
-    } catch (kuzelliumHistError) {
-      console.error('クーゼリアム価格履歴初期化エラー:', kuzelliumHistError);
-    }
-    
-    console.log('ゴールド価格履歴を初期化中...');
-    try {
-      await rtdb.ref(`priceHistory/gold/${timestamp}`).set({
-        price: goldPrice,
-        timestamp: timestamp
-      });
-      console.log('ゴールド価格履歴の初期化完了');
-    } catch (goldHistError) {
-      console.error('ゴールド価格履歴初期化エラー:', goldHistError);
-    }
-    
-    // 更新トリガーもリセット
-    console.log('更新トリガーをリセット中...');
-    try {
-      await rtdb.ref('triggers/priceUpdate').set({
-        timestamp: timestamp,
-        minute: new Date().getMinutes(),
-        reset: true
-      });
-      console.log('更新トリガーのリセット完了');
-    } catch (triggerError) {
-      console.error('更新トリガーリセットエラー:', triggerError);
-    }
-    
-    // 初期化後の検証
-    try {
-      const kuzelliumVerify = await rtdb.ref('prices/kuzellium').once('value');
-      const goldVerify = await rtdb.ref('prices/gold').once('value');
-      console.log('初期化後の検証:');
-      console.log('クーゼリアム:', kuzelliumVerify.val());
-      console.log('ゴールド:', goldVerify.val());
-    } catch (verifyError) {
-      console.error('初期化検証エラー:', verifyError);
-    }
-    
-    // 成功レスポンス
-    res.json({ 
-      message: '市場価格を初期化しました',
-      timestamp: new Date(timestamp).toISOString(),
-      initialPrices: {
-        kuzellium: kuzelliumPrice,
-        gold: goldPrice
-      }
-    });
-  } catch (error) {
-    console.error('市場価格初期化エラー:', error);
-    res.status(500).json({ error: '市場価格の初期化に失敗しました', details: error.message });
-  }
-});
-
 // 手動トリガーを実行するHTTP関数（デバッグ用）
 exports.manualTrigger = functions.https.onRequest(async (req, res) => {
   console.log('===== 手動トリガー関数が実行されました =====');
@@ -468,226 +330,6 @@ exports.manualTrigger = functions.https.onRequest(async (req, res) => {
   } catch (error) {
     console.error('手動トリガーエラー:', error);
     res.status(500).json({ error: '手動トリガー実行に失敗しました', details: error.message });
-  }
-});
-
-// イベントによる市場価格変動関数（ゲーム管理者用）
-exports.triggerMarketEvent = functions.https.onRequest(async (req, res) => {
-  console.log('===== イベント実行関数が呼び出されました =====');
-  console.log('リクエストメソッド:', req.method);
-  console.log('リクエストボディ:', req.body);
-  
-  try {
-    // POSTメソッドのみ許可
-    if (req.method !== 'POST') {
-      console.log('不正なメソッド:', req.method);
-      res.status(405).json({ error: 'POST method required' });
-      return;
-    }
-    
-    // リクエストボディからイベント情報を取得
-    const { eventType, assetType, effectPercent, adminKey } = req.body;
-    
-    // 簡易的な認証（本番環境ではより堅牢な認証を使用すべき）
-    const validAdminKey = functions.config().admin?.key || 'default-admin-key';
-    if (adminKey !== validAdminKey) {
-      console.log('不正な管理者キー');
-      res.status(403).json({ error: '管理者権限が必要です' });
-      return;
-    }
-    
-    // パラメータ検証
-    if (!eventType || !assetType || effectPercent === undefined) {
-      console.log('必須パラメータ不足:', { eventType, assetType, effectPercent });
-      res.status(400).json({ error: '必須パラメータが不足しています' });
-      return;
-    }
-    
-    if (assetType !== 'kuzellium' && assetType !== 'gold') {
-      console.log('無効な資産タイプ:', assetType);
-      res.status(400).json({ error: '無効な資産タイプです' });
-      return;
-    }
-    
-    const rtdb = admin.database();
-    
-    // 現在の価格を取得
-    console.log(`現在の${assetType}価格を取得中...`);
-    const priceSnapshot = await rtdb.ref(`prices/${assetType}`).once('value');
-    
-    if (!priceSnapshot.exists()) {
-      console.log(`prices/${assetType}ノードが存在しません`);
-      res.status(404).json({ error: '価格データが見つかりません' });
-      return;
-    }
-    
-    const currentPriceData = priceSnapshot.val();
-    console.log('現在の価格データ:', currentPriceData);
-    
-    // 効果を適用した新しい価格を計算
-    const currentPrice = currentPriceData.price;
-    const initialPrice = currentPriceData.initialPrice;
-    const newPrice = currentPrice * (1 + (effectPercent / 100));
-    
-    // 初期価格からの変動率を計算
-    const newChangePercent = ((newPrice - initialPrice) / initialPrice) * 100;
-    
-    console.log(`イベント効果の計算結果 - 現在価格:${currentPrice}, 新価格:${newPrice}, 変動率:${newChangePercent}%`);
-    
-    const timestamp = Date.now();
-    
-    // 価格を更新
-    console.log(`新しい価格を更新中: prices/${assetType}`);
-    await rtdb.ref(`prices/${assetType}`).set({
-      price: newPrice,
-      initialPrice: initialPrice,
-      changePercent: newChangePercent,
-      updatedAt: timestamp,
-      affectedBy: {
-        eventType,
-        effectPercent,
-        timestamp
-      }
-    });
-    console.log('価格の更新完了');
-    
-    // 価格履歴に追加
-    console.log(`価格履歴に追加中: priceHistory/${assetType}/${timestamp}`);
-    await rtdb.ref(`priceHistory/${assetType}/${timestamp}`).set({
-      price: newPrice,
-      timestamp: timestamp,
-      eventDriven: true,
-      eventType: eventType
-    });
-    console.log('価格履歴への追加完了');
-    
-    // イベント履歴に記録
-    console.log(`イベント履歴に記録中: events/${timestamp}`);
-    await rtdb.ref(`events/${timestamp}`).set({
-      type: eventType,
-      assetType: assetType,
-      effectPercent: effectPercent,
-      previousPrice: currentPrice,
-      newPrice: newPrice,
-      timestamp: timestamp
-    });
-    console.log('イベント履歴への記録完了');
-    
-    // 成功レスポンス
-    res.json({
-      message: 'イベントによる価格変動を実行しました',
-      eventType,
-      assetType,
-      previousPrice: currentPrice,
-      newPrice: newPrice,
-      changePercent: effectPercent,
-      timestamp: new Date(timestamp).toISOString()
-    });
-    
-  } catch (error) {
-    console.error('イベント実行エラー:', error);
-    res.status(500).json({ error: 'イベント実行に失敗しました', details: error.message });
-  }
-});
-
-// 手動で価格を更新するためのHTTP関数（デバッグとテスト用）
-exports.manualUpdatePrice = functions.https.onRequest(async (req, res) => {
-  console.log('===== 手動価格更新関数が呼び出されました =====');
-  console.log('リクエストメソッド:', req.method);
-  console.log('リクエストボディ:', req.body);
-  
-  try {
-    // POSTメソッドのみ許可
-    if (req.method !== 'POST') {
-      console.log('不正なメソッド:', req.method);
-      res.status(405).json({ error: 'POST method required' });
-      return;
-    }
-    
-    // リクエストボディからパラメータを取得
-    const { assetType, adminKey } = req.body;
-    
-    // 簡易的な認証
-    const validAdminKey = functions.config().admin?.key || 'default-admin-key';
-    if (adminKey !== validAdminKey) {
-      console.log('不正な管理者キー');
-      res.status(403).json({ error: '管理者権限が必要です' });
-      return;
-    }
-    
-    // パラメータ検証
-    if (!assetType) {
-      console.log('資産タイプが指定されていません');
-      res.status(400).json({ error: '資産タイプが必要です' });
-      return;
-    }
-    
-    if (assetType !== 'kuzellium' && assetType !== 'gold') {
-      console.log('無効な資産タイプ:', assetType);
-      res.status(400).json({ error: '無効な資産タイプです' });
-      return;
-    }
-    
-    const rtdb = admin.database();
-    const timestamp = Date.now();
-    
-    let newPrice, changePercent;
-    
-    console.log(`${assetType}の新しい価格を計算中...`);
-    if (assetType === 'kuzellium') {
-      const result = calculateKuzelliumPrice(PRICE_CONFIG.kuzellium);
-      newPrice = result.price;
-      changePercent = result.changePercent;
-    } else {
-      const result = calculateGoldPrice(PRICE_CONFIG.gold);
-      newPrice = result.price;
-      changePercent = result.changePercent;
-    }
-    
-    // 現在の価格を更新
-    console.log(`新しい価格でprices/${assetType}を更新中...`);
-    try {
-      await rtdb.ref(`prices/${assetType}`).set({
-        price: newPrice,
-        initialPrice: PRICE_CONFIG[assetType].initialPrice,
-        changePercent: changePercent,
-        updatedAt: timestamp,
-        manualUpdate: true
-      });
-      console.log(`${assetType}価格の更新完了`);
-    } catch (updateError) {
-      console.error(`${assetType}価格更新エラー:`, updateError);
-      throw updateError;
-    }
-    
-    // 価格履歴に追加
-    console.log(`価格履歴に追加中: priceHistory/${assetType}/${timestamp}`);
-    try {
-      await rtdb.ref(`priceHistory/${assetType}/${timestamp}`).set({
-        price: newPrice,
-        timestamp: timestamp,
-        manualUpdate: true
-      });
-      console.log('価格履歴への追加完了');
-    } catch (historyError) {
-      console.error('価格履歴追加エラー:', historyError);
-      // 履歴エラーは処理を中断しない
-    }
-    
-    // 成功を確認
-    const verifySnapshot = await rtdb.ref(`prices/${assetType}`).once('value');
-    console.log('更新後の価格データ:', verifySnapshot.val());
-    
-    res.json({
-      message: `${assetType} の価格を手動で更新しました`,
-      newPrice: newPrice,
-      changePercent: changePercent,
-      timestamp: new Date(timestamp).toISOString()
-    });
-    
-  } catch (error) {
-    console.error('手動価格更新エラー:', error);
-    res.status(500).json({ error: '価格更新に失敗しました', details: error.message });
   }
 });
 
@@ -1055,6 +697,27 @@ exports.getSystemStatus = functions.https.onRequest(async (req, res) => {
       }
     } catch (triggerError) {
       status.trigger = { error: triggerError.message };
+    }
+    
+    // ゲーム状態の確認
+    try {
+      const db = admin.firestore();
+      const gameStateDoc = await db.collection('gameState').doc('current').get();
+      
+      if (gameStateDoc.exists) {
+        const gameState = gameStateDoc.data();
+        status.gameState = {
+          exists: true,
+          status: gameState.status,
+          currentPhase: gameState.currentPhase
+        };
+      } else {
+        status.gameState = {
+          exists: false
+        };
+      }
+    } catch (gameError) {
+      status.gameState = { error: gameError.message };
     }
     
     // Cloud Functionsの一般情報

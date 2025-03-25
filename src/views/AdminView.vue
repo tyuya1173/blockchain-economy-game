@@ -24,7 +24,7 @@
         <!-- 管理者機能の表示 -->
         <div v-else class="admin-panels">
           <!-- ゲーム参加者選択 (ゲーム開始前のみ表示) -->
-          <div v-if="gameStatus === 'waiting'" class="participants-selection panel">
+          <div v-if="gameStatus === 'waiting' || gameStatus === 'finished'" class="participants-selection panel">
             <h3>ゲーム参加者選択</h3>
             <div class="selection-controls">
               <div class="selection-info">
@@ -160,7 +160,11 @@
       const advancePhaseFunction = httpsCallable(functions, 'advancePhase');
       const triggerEventFunction = httpsCallable(functions, 'triggerEvent');
       const cancelEventFunction = httpsCallable(functions, 'cancelEvent');
-      const updatePriceFunction = httpsCallable(functions, 'updatePrice');
+      
+      // 新しい価格管理用関数
+      const initializeMarketPricesFunction = httpsCallable(functions, 'initializeMarketPrices');
+      const manualUpdatePriceFunction = httpsCallable(functions, 'manualUpdatePrice');
+      const triggerMarketEventFunction = httpsCallable(functions, 'triggerMarketEvent');
       
       return {
         startGameFunction,
@@ -168,7 +172,9 @@
         advancePhaseFunction,
         triggerEventFunction,
         cancelEventFunction,
-        updatePriceFunction
+        initializeMarketPricesFunction,
+        manualUpdatePriceFunction,
+        triggerMarketEventFunction
       };
     },
     data() {
@@ -355,6 +361,12 @@
       // イベント情報を取得
       async fetchEvents() {
         try {
+          // イベントが未実装のため、空の配列を設定
+          this.activeEvents = [];
+          this.availableEvents = [];
+          
+          // 以下のコードをコメントアウト
+          /*
           // アクティブなイベント
           const now = new Date();
           const activeEventsRef = collection(db, 'events');
@@ -379,8 +391,14 @@
             ...doc.data(),
             id: doc.id
           }));
+          */
+          
+          console.log('イベント機能は現在実装中です');
         } catch (error) {
           console.error('イベント情報の取得に失敗しました:', error);
+          // エラー時も空の配列を設定
+          this.activeEvents = [];
+          this.availableEvents = [];
         }
       },
       
@@ -538,12 +556,29 @@
             return;
           }
           
-          // ゲーム開始前の確認
-          const confirmStart = confirm(`${this.selectedUsers.length}人のユーザーでゲームを開始します。よろしいですか？`);
+          // ゲーム開始前の確認メッセージを状態に応じて変更
+          let confirmMessage = '';
+          if (this.gameStatus === 'finished') {
+            confirmMessage = `前回のゲーム結果をリセットし、${this.selectedUsers.length}人のユーザーで新しいゲームを開始します。よろしいですか？`;
+          } else {
+            confirmMessage = `${this.selectedUsers.length}人のユーザーでゲームを開始します。よろしいですか？`;
+          }
+          
+          const confirmStart = confirm(confirmMessage);
           if (!confirmStart) return;
           
           // ローディング状態を設定
           this.loading = true;
+          
+          // ゲーム終了状態からの再開始の場合、市場価格を初期化
+          if (this.gameStatus === 'finished') {
+            try {
+              await this.initializeMarketPricesFunction();
+            } catch (error) {
+              console.error('市場価格の初期化に失敗しました:', error);
+              // エラーがあっても続行
+            }
+          }
           
           // Cloud Functionを呼び出す
           const result = await this.startGameFunction({ participantIds: this.selectedUsers });
@@ -685,10 +720,10 @@
           
           this.loading = true;
           
-          // Cloud Functionを呼び出す
-          const result = await this.updatePriceFunction({ 
+          // Cloud Functionを呼び出す - 価格パラメータを追加
+          const result = await this.manualUpdatePriceFunction({ 
             assetType,
-            price: newPrice
+            price: newPrice  // 重要: 新しい価格を渡す
           });
           
           // 成功時のメッセージ表示
@@ -701,6 +736,61 @@
         } catch (error) {
           console.error('価格更新に失敗しました:', error);
           alert(`価格更新に失敗しました: ${error.message || '不明なエラー'}`);
+          this.loading = false;
+        }
+      },
+      async initializeMarketPrices() {
+        try {
+          if (!this.isAdmin) return;
+          
+          const confirmReset = confirm('市場価格を初期値にリセットしますか？');
+          if (!confirmReset) return;
+          
+          this.loading = true;
+          
+          // Cloud Functionを呼び出す
+          const result = await this.initializeMarketPricesFunction();
+          
+          // 成功時のメッセージ表示
+          alert(result.data.message || '市場価格を初期化しました');
+          
+          // 市場価格を再取得
+          await this.fetchMarketPrices();
+          
+          this.loading = false;
+        } catch (error) {
+          console.error('市場価格の初期化に失敗しました:', error);
+          alert(`市場価格の初期化に失敗しました: ${error.message || '不明なエラー'}`);
+          this.loading = false;
+        }
+      },
+      // イベントによる価格変動メソッドを追加
+      async triggerMarketEvent(eventType, assetType, effectPercent) {
+        try {
+          if (!this.isAdmin) return;
+          
+          const confirmEvent = confirm(`${eventType}イベントを発生させ、${assetType}の価格を${effectPercent > 0 ? '上昇' : '下落'}させますか？`);
+          if (!confirmEvent) return;
+          
+          this.loading = true;
+          
+          // Cloud Functionを呼び出す
+          const result = await this.triggerMarketEventFunction({ 
+            eventType,
+            assetType,
+            effectPercent
+          });
+          
+          // 成功時のメッセージ表示
+          alert(result.data.message || 'イベントを発生させました');
+          
+          // 市場価格を再取得
+          await this.fetchMarketPrices();
+          
+          this.loading = false;
+        } catch (error) {
+          console.error('イベント発生に失敗しました:', error);
+          alert(`イベント発生に失敗しました: ${error.message || '不明なエラー'}`);
           this.loading = false;
         }
       },

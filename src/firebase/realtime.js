@@ -79,12 +79,12 @@ export const subscribeToPriceHistory = (assetType, callback, limit = 30) => {
   const historyRef = ref(rtdb, `priceHistory/${assetType}`);
   
   onValue(historyRef, (snapshot) => {
-    console.log(`${assetType} 履歴データ受信 - データ存在: ${snapshot.exists()}`);
+    // console.log(`${assetType} 履歴データ受信 - データ存在: ${snapshot.exists()}`);
     
     try {
       const data = snapshot.val() || {};
       const historyKeys = Object.keys(data);
-      console.log(`${assetType} 履歴データのキー数: ${historyKeys.length}`);
+      // console.log(`${assetType} 履歴データのキー数: ${historyKeys.length}`);
       
       if (historyKeys.length === 0) {
         console.warn(`${assetType} の履歴データが存在しません`);
@@ -124,11 +124,11 @@ export const subscribeToPriceHistory = (assetType, callback, limit = 30) => {
         .filter(item => item !== null) // 無効なアイテムを除外
         .sort((a, b) => a.timestamp - b.timestamp);
       
-      console.log(`${assetType} 有効な履歴アイテム: ${historyItems.length}件`);
+      // console.log(`${assetType} 有効な履歴アイテム: ${historyItems.length}件`);
       
       // 指定された数だけの最新データに制限
       const limitedHistory = historyItems.slice(-limit);
-      console.log(`${assetType} コールバックに渡す履歴アイテム: ${limitedHistory.length}件`);
+      // console.log(`${assetType} コールバックに渡す履歴アイテム: ${limitedHistory.length}件`);
       
       callback(limitedHistory);
     } catch (error) {
@@ -140,10 +140,10 @@ export const subscribeToPriceHistory = (assetType, callback, limit = 30) => {
     callback([]);
   });
   
-  console.log(`${assetType} の価格履歴リスナーが設定されました`);
+  // console.log(`${assetType} の価格履歴リスナーが設定されました`);
   // リスナー解除関数を返す
   return () => {
-    console.log(`${assetType} の価格履歴リスナーを解除します`);
+    // console.log(`${assetType} の価格履歴リスナーを解除します`);
     off(historyRef);
   };
 };

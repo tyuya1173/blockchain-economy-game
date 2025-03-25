@@ -28,10 +28,10 @@
         <button 
           @click="handleStartGame" 
           class="control-button" 
-          :class="{ primary: gameStatus === 'waiting', disabled: gameStatus === 'active' || gameStatus === 'finished' }"
-          :disabled="gameStatus === 'active' || gameStatus === 'finished'"
+          :class="{ primary: gameStatus === 'waiting' || gameStatus === 'finished', disabled: gameStatus === 'active' }"
+          :disabled="gameStatus === 'active'"
         >
-          ゲーム開始
+          {{ gameStatus === 'finished' ? 'ゲーム再開始' : 'ゲーム開始' }}
         </button>
         
         <button 
@@ -213,11 +213,18 @@
     },
   
     methods: {
+      // 確認ダイアログのメッセージも状態に応じて変更
       handleStartGame() {
-        if (this.gameStatus !== 'waiting') return;
+        if (this.gameStatus !== 'waiting' && this.gameStatus !== 'finished') return;
         
         this.confirmTitle = 'ゲーム開始の確認';
-        this.confirmMessage = 'ゲームを開始しますか？参加者は確定され、開始後は待機状態に戻れません。ゲームは約1時間続きます。';
+        
+        if (this.gameStatus === 'finished') {
+          this.confirmMessage = '新しいゲームを開始しますか？現在の結果は履歴に保存され、新しいゲームのために状態がリセットされます。';
+        } else {
+          this.confirmMessage = 'ゲームを開始しますか？参加者は確定され、開始後は待機状態に戻れません。ゲームは約1時間続きます。';
+        }
+        
         this.confirmAction = 'start-game';
       },
       
