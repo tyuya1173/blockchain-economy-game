@@ -8,7 +8,7 @@ import DashboardView from '../views/DashboardView.vue'
 // import MiningView from '../views/MiningView.vue'
 // import TradingView from '../views/TradingView.vue'
 import MarketView from '../views/MarketView.vue'
-// import AdminView from '../views/AdminView.vue'
+import AdminView from '../views/AdminView.vue'
 
 Vue.use(VueRouter)
 
@@ -53,12 +53,12 @@ const routes = [
     component: MarketView,
     meta: { requiresAuth: true }
   },
-  // {
-  //   path: '/admin',
-  //   name: 'admin',
-  //   component: AdminView,
-  //   meta: { requiresAuth: true, requiresAdmin: true }
-  // }
+  {
+    path: '/admin',
+    name: 'admin',
+    component: AdminView,
+    meta: { requiresAuth: true, requiresAdmin: true }
+  }
 ]
 
 const router = new VueRouter({
