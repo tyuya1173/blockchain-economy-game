@@ -10,6 +10,9 @@ const adminFunctions = require('./admin/gameControl');
 const miningFunctions = require('./mining/rewardDistributor');
 const tradingFunctions = require('./trading/ledgerRecorder');
 const userFunctions = require('./admin/userManagement');
+const tradingCallable = require('./trading/functionExports');
+const transferAsset  = require('./trading/assetTransfer');
+const recordToLedger = require('./trading/ledgerRecorder');
 
 // Export all functions
 module.exports = {
@@ -17,5 +20,8 @@ module.exports = {
   ...adminFunctions,
   ...miningFunctions,
   ...tradingFunctions,
-  ...userFunctions
+  ...userFunctions,
+  ...tradingCallable,
+  ...transferAsset,
+  ...recordToLedger
 };
