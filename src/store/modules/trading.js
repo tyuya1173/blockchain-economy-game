@@ -30,6 +30,7 @@ const actions = {
     commit('SET_ERROR', null);
 
     try {
+      console.log('processTransaction関数を呼び出し中:', { fromUserId, toUserId, assetType, amount });
       const processTrade = httpsCallable(functions, 'processTransaction');
       const result = await processTrade({ fromUserId, toUserId, assetType, amount });
 

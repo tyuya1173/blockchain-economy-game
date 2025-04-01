@@ -33,9 +33,6 @@ export default {
       errorMessage: ''
     };
   },
-  computed: {
-    ...mapState('auth', ['userId']) // Vuexから自分のユーザーIDを取得
-  },
   methods: {
     openConfirmation(tradeData) {
       // fromUserId を追加して確認モーダルへ
