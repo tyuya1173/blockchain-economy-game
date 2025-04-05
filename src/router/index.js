@@ -5,10 +5,16 @@ import VueRouter from 'vue-router'
 import LoginView from '../views/LoginView.vue'
 // import RegisterView from '../views/RegisterView.vue'
 import DashboardView from '../views/DashboardView.vue'
-// import MiningView from '../views/MiningView.vue'
+import MiningView from '../views/MiningView.vue'
+import NumberHashChallengeView from '@/views/ChallengeGame/NumberHashChallengeView.vue';
+import QuizChallengeView from '@/views/ChallengeGame/ComputerScienseView.vue';
+import PatternMatchingChallengeView from '@/views/ChallengeGame/PrimeFactorizationView.vue';
+import PrimeFactorizationView from '@/views/ChallengeGame/PrimeFactorizationView.vue'
 // import TradingView from '../views/TradingView.vue'
 // import MarketView from '../views/MarketView.vue'
 // import AdminView from '../views/AdminView.vue'
+
+// 他のチャレンジビューのインポート
 
 Vue.use(VueRouter)
 
@@ -35,12 +41,28 @@ const routes = [
     component: DashboardView,
     meta: { requiresAuth: true }
   },
-  // {
-  //   path: '/mining',
-  //   name: 'mining',
-  //   component: MiningView,
-  //   meta: { requiresAuth: true }
-  // },
+  {
+    path: '/mining',
+    name: 'mining',
+    component: MiningView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/number-hash-challenge',
+    name: 'NumberHashChallengeView',
+    component: NumberHashChallengeView
+  },
+  {
+    path: '/computer-sciense',
+    name: 'QuizChallengeView',
+    component: QuizChallengeView
+  },
+  {
+    path: '/prime-factorization',
+    name: 'primeFactorizationView',
+    component: PrimeFactorizationView
+  },
+
   // {
   //   path: '/trading',
   //   name: 'trading',
@@ -58,7 +80,7 @@ const routes = [
   //   name: 'admin',
   //   component: AdminView,
   //   meta: { requiresAuth: true, requiresAdmin: true }
-  // }
+  // },
 ]
 
 const router = new VueRouter({
