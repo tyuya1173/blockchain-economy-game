@@ -1,97 +1,324 @@
 <template>
-  <div class="prime-factorization-game">
-    <h1>RSA暗号の素因数分解バトル 🏗️</h1>
-    <p>素因数分解して、位を入れ替えた値の積を入力せよ</p>
-    <p>公開鍵 N: {{ N }}</p>
-    <p v-if="message" :class="{ success: isSuccess, error: !isSuccess }">{{ message }}</p>
-    <AnswerForm mode="prime-factorization" @submit-answer="checkAnswer" />
+  <div class="tamper-game-container"> <h1>トランザクション・マッチャー</h1>
+
+    <div class="status-bar">
+      <div class="info-item timer-container">
+        <div class="timer-bar" :style="{ width: `${(timeLeft / maxTime) * 100}%` }"></div>
+        <span>{{ timeLeft }}s</span>
+      </div>
+      <div class="info-item lives">
+        <span v-for="n in lives" :key="'life-' + n" class="heart">❤️</span>
+      </div>
+      <div class="info-item score">Score: {{ score }}</div>
+    </div>
+
+    <p class="instruction">表示された取引内容に合う選択肢を素早く選んでください！</p>
+
+    <div class="problem-display-area" v-if="currentTransaction && !isGameOver">
+      <div class="transaction-text-box">
+        <p>{{ currentTransaction.text }}</p>
+      </div>
+    </div>
+
+    <div class="choices-area" v-if="currentTransaction && !isGameOver">
+       <div class="choices" v-if="choices && choices.length > 0">
+          <button
+            v-for="(choice) in choices"
+            :key="choice.key"
+            @click="submitAnswer(choice)"
+            :disabled="isSubmitting"
+            class="choice-button"
+          >
+            {{ choice.text }}
+          </button>
+       </div>
+       <div v-else>
+         <p>選択肢を生成中...</p>
+       </div>
+    </div>
+
+    <div class="message-area">
+        <transition name="feedback-fade">
+            <p v-if="feedbackMessage" :class="feedbackMessageType">{{ feedbackMessage }}</p>
+        </transition>
+    </div>
+
+     <div class="game-over-overlay" v-if="isGameOver">
+          <div class="game-over-modal">
+            <h2>GAME OVER</h2>
+            <p>最終スコア: {{ score }}</p>
+            <p class="redirect-message">まもなくマイニングページに戻ります...</p>
+        </div>
+     </div>
   </div>
 </template>
 
 <script>
-import AnswerForm from './AnswerForm.vue';
+// import sha256 from "crypto-js/sha256"; // このゲームでは不要
+
+// --- 定数定義 ---
+const INITIAL_LIVES = 3;
+const INITIAL_MAX_TIME = 5;
+const POINTS_PER_CORRECT = 100;
+const REDIRECT_DELAY = 3000;
+const FEEDBACK_DURATION = 700;
+
+// ダミーデータ生成用
+const NAMES = ["アリス", "ボブ", "キャロル", "デイブ", "EVE", "Alice", "Bob", "Carol"];
+const CURRENCIES = ["コイン", "トークン", "ポイント", "ETH", "BTC"];
+const ITEMS = ["クリスタルソード", "ポーション", "NFTアート#123", "土地(区画A)"];
 
 export default {
-  components: {
-    AnswerForm,
-  },
-  data() {
+  name: "TransactionMatcherGameStyledVue2",
+  data: function () {
     return {
-      N: null,
-      correctP: null, // 正しい p
-      correctQ: null, // 正しい q
-      message: "",
-      isSuccess: false,
-      ans: null,
+      currentTransaction: null,
+      choices: [],
+      score: 0,
+      lives: INITIAL_LIVES,
+      maxTime: INITIAL_MAX_TIME,
+      timeLeft: INITIAL_MAX_TIME,
+      timer: null,
+      isGameOver: false,
+      isSubmitting: false,
+      feedbackMessage: null,
+      feedbackMessageType: 'success',
+      problemCounter: 0,
     };
   },
+  // computed はなし
   methods: {
-    generateNewKey() {
-      const primes = this.generatePrimes(50, 100); // Generate primes between 50 and 100
-      const p = primes[Math.floor(Math.random() * primes.length)];
-      const q = primes[Math.floor(Math.random() * primes.length)];
-      this.N = p * q;
-      this.correctP = p; // 正しい p を保存
-      this.correctQ = q; // 正しい q を保存
-      this.message = "";
-      this.isSuccess = false;
-      this.x = this.swapDigits(p);
-      this.y = this.swapDigits(q);
-      this.ans =　this.x * this.y;
+    // --- ゲーム制御 ---
+    initializeGame: function () {
+      console.log("Initializing Transaction Matcher Game (Styled Vue 2)...");
+      this.score = 0;
+      this.lives = INITIAL_LIVES;
+      this.maxTime = INITIAL_MAX_TIME;
+      this.timeLeft = this.maxTime;
+      this.isGameOver = false;
+      this.isSubmitting = false;
+      this.feedbackMessage = null;
+      this.problemCounter = 0;
+      if (this.timer) { clearInterval(this.timer); this.timer = null; }
+      this.generateProblem();
+      this.startTimer();
+    },
+    startTimer: function () {
+      if (this.timer) clearInterval(this.timer);
+      this.timeLeft = this.maxTime;
+      this.timer = setInterval(() => {
+        if (this.isGameOver || this.isSubmitting || this.timeLeft <= 0) return;
+        this.timeLeft--;
+        if (this.timeLeft <= 0) {
+          this.handleIncorrect(true); // 時間切れ
+        }
+      }, 1000);
+    },
+    endGame: function () {
+      console.log("Game Over!");
+      if (this.timer) clearInterval(this.timer);
+      this.timer = null;
+      this.isGameOver = true;
+      setTimeout(() => {
+          if (this.$router) { this.$router.push('/mining'); }
+          else { window.location.href = '/mining'; }
+      }, REDIRECT_DELAY);
     },
 
-    swapDigits(num) {
-      const tens = Math .floor(num / 10); // 10の位
-      const ones = num % 10; // 1の位
-      return ones * 10 + tens; // 1の位と10の位を入れ替えた値
+    // --- 問題生成 ---
+    generateProblem: function () {
+        this.problemCounter++;
+        const isItemTransfer = Math.random() < 0.3;
+        let senderIndex = Math.floor(Math.random() * NAMES.length);
+        let receiverIndex = Math.floor(Math.random() * NAMES.length);
+        while (senderIndex === receiverIndex) { receiverIndex = Math.floor(Math.random() * NAMES.length); }
+        const sender = NAMES[senderIndex];
+        const receiver = NAMES[receiverIndex];
+        let amount = 0, currencyOrItem = '', transactionText = '', correctChoiceText = '';
+        const blockNum = Math.floor(Math.random()*8999)+1000;
+
+        if (isItemTransfer) {
+            currencyOrItem = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+            amount = 1;
+            transactionText = `記録 [Block #${blockNum}]: ${sender} が ${receiver} へアイテム「${currencyOrItem}」を譲渡。`;
+            correctChoiceText = `${sender} → ${receiver} : ${currencyOrItem}`;
+        } else {
+            currencyOrItem = CURRENCIES[Math.floor(Math.random() * CURRENCIES.length)];
+            amount = Math.floor(Math.random() * 991) + 10;
+            transactionText = `承認 [Block #${blockNum}]: ${sender} から ${receiver} に ${amount} ${currencyOrItem} を送金。`;
+            correctChoiceText = `${sender} → ${receiver} : ${amount}`;
+        }
+        this.currentTransaction = { text: transactionText, sender: sender, receiver: receiver, amount: amount, unit: currencyOrItem, key: `tx-${this.problemCounter}` };
+        this.choices = this.generateChoices(sender, receiver, amount, currencyOrItem, correctChoiceText, isItemTransfer);
+        console.log("New problem generated:", this.currentTransaction);
+        console.log("Choices generated:", this.choices);
+    },
+    generateChoices: function (sender, receiver, amount, unit, correctText, isItem) {
+        const choicesSet = new Set();
+        choicesSet.add(JSON.stringify({ text: correctText, isCorrect: true, key: `choice-${this.problemCounter}-0` }));
+        while (choicesSet.size < 3) {
+            let dSender = sender, dReceiver = receiver, dAmount = amount, dUnit = unit, wrongText = '';
+            const changeType = Math.random();
+            if (changeType < 0.33) {
+                if (Math.random() < 0.5) { [dSender, dReceiver] = [receiver, sender]; }
+                else { let wIdx = Math.floor(Math.random() * NAMES.length); while(NAMES[wIdx] === sender || NAMES[wIdx] === receiver){ wIdx = Math.floor(Math.random() * NAMES.length); } if(Math.random() < 0.5) dSender = NAMES[wIdx]; else dReceiver = NAMES[wIdx]; }
+            } else if (changeType < 0.66) {
+                if (!isItem) { dAmount = Math.floor(Math.random() * 991) + 10; while(dAmount === amount) dAmount = Math.floor(Math.random() * 991) + 10; if(Math.random() < 0.2) dUnit = CURRENCIES[Math.floor(Math.random() * CURRENCIES.length)]; }
+                else { dUnit = ITEMS[Math.floor(Math.random() * ITEMS.length)]; while(dUnit === unit) dUnit = ITEMS[Math.floor(Math.random() * ITEMS.length)]; }
+            } else {
+                let wrongNameIndex = Math.floor(Math.random() * NAMES.length); while(NAMES[wrongNameIndex] === sender || NAMES[wrongNameIndex] === receiver){ wrongNameIndex = Math.floor(Math.random() * NAMES.length); }
+                dReceiver = NAMES[wrongNameIndex];
+                if (!isItem) { dAmount = Math.floor(Math.random() * 991) + 10; while(dAmount === amount) dAmount = Math.floor(Math.random() * 991) + 10; }
+                 else { dUnit = ITEMS[Math.floor(Math.random() * ITEMS.length)]; while(dUnit === unit) dUnit = ITEMS[Math.floor(Math.random() * ITEMS.length)]; }
+            }
+            if (isItem) { wrongText = `${dSender} → ${dReceiver} : ${dUnit}`; }
+            else { wrongText = `${dSender} → ${dReceiver} : ${dAmount}`; }
+            choicesSet.add(JSON.stringify({ text: wrongText, isCorrect: false, key: `choice-${this.problemCounter}-${choicesSet.size}` }));
+        }
+        const finalChoices = Array.from(choicesSet).map(s => JSON.parse(s));
+        return this.shuffleArray(finalChoices);
     },
 
-    // 素数を生成する関数
-    generatePrimes(start, end) {
-      const primes = [];
-      for (let i = start; i <= end; i++) {
-        if (this.isPrime(i)) primes.push(i);
+    // --- 回答処理 ---
+    submitAnswer: function (selectedChoice) {
+      if (this.isGameOver || this.isSubmitting) return;
+      this.isSubmitting = true;
+      if(this.timer) clearInterval(this.timer);
+
+      const isCorrect = selectedChoice.isCorrect;
+
+      this.feedbackMessage = isCorrect ? "承認!" : "拒否!";
+      this.feedbackMessageType = isCorrect ? 'success' : 'error';
+
+      if (isCorrect) { this.handleCorrect(); }
+      else { this.handleIncorrect(false); }
+
+      setTimeout(() => {
+          this.feedbackMessage = null;
+           if (!this.isGameOver) {
+                this.generateProblem();
+                this.isSubmitting = false;
+                this.startTimer();
+           }
+      }, FEEDBACK_DURATION);
+    },
+    handleCorrect: function () {
+        console.log("Correct!");
+        this.score += POINTS_PER_CORRECT + Math.max(0, Math.floor(this.timeLeft / 5));
+    },
+    handleIncorrect: function (isTimeout = false) {
+        if (this.isGameOver) return;
+        console.log(isTimeout ? "Incorrect: Time's up!" : "Incorrect: Wrong choice.");
+        this.lives--;
+        if (this.lives <= 0) { this.endGame(); }
+        // isSubmitting と タイマー再開は呼び出し元の setTimeout 後に行う
+    },
+
+    // --- ヘルパー関数 ---
+    formatTimestamp: function (timestamp) { return ''; }, // 未使用
+    shuffleArray: function (array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
       }
-      return primes;
+      return array;
     },
-
-    isPrime(num) {
-      if (num < 2) return false;
-      for (let i = 2; i <= Math.sqrt(num); i++) {
-        if (num % i === 0) return false;
-      }
-      return true;
-    },
-
-
-    checkAnswer(answer) {
-      if (answer === (this.ans).toString()) {
-        // 正解の場合
-        alert("正解です！");
-        this.isSuccess = true;
-        this.$router.push("/mining");
-      } else {
-        // 不正解の場合
-        alert("不正解です。もう一度お試しください。");
-      }
-    }
   },
-  mounted() {
-    this.generateNewKey();
+  // --- ライフサイクルフック ---
+  mounted: function () {
+    console.log("TransactionMatcherGame component mounted (Vue 2 Styled).");
+    this.initializeGame();
   },
+  beforeDestroy: function () {
+    console.log("TransactionMatcherGame component destroying (Vue 2 Styled), clearing timer.");
+    if (this.timer) { clearInterval(this.timer); }
+  }
 };
 </script>
 
 <style scoped>
-.prime-factorization-game {
-  font-family: Arial, sans-serif;
-  text-align: center;
-  margin: 20px;
+/* ★★★ 改ざん発見ゲームのスタイルをベースに適用 ★★★ */
+
+/* --- 基本スタイル --- */
+.tamper-game-container { display: flex; flex-direction: column; align-items: center; gap: 15px; padding: 20px; font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; max-width: 100%; margin: auto; background-color: #e9eff1; border-radius: 12px; box-shadow: 0 6px 12px rgba(0,0,0,0.1); position: relative; box-sizing: border-box; }
+h1 { color: #2c3e50; margin-bottom: 10px; font-size: 1.8em; text-align: center; }
+.instruction { font-size: 14px; color: #555; margin-bottom: 20px; text-align: center; line-height: 1.6; }
+
+/* --- ステータスバー --- */
+.status-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 10px 15px; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); flex-wrap: wrap; gap: 10px 20px; margin-bottom: 20px; box-sizing: border-box; }
+.info-item { font-weight: bold; font-size: 14px; color: #333; padding: 5px 8px; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+.score { font-size: 16px; background: none; padding: 0; }
+/* ★ タイマー表示スタイル修正 ★ */
+.timer-container { width: 120px; height: 22px; background-color: #e9ecef; border-radius: 11px; overflow: hidden; position: relative; padding: 0; border: 1px solid #ccc; }
+.timer-bar { height: 100%; background: linear-gradient(to right, #5cb85c, #a5d6a7); transition: width 0.5s linear; border-radius: 11px 0 0 11px; }
+.timer-container span { position: absolute; right: 8px; top: 2px; font-size: 12px; color: #333; font-weight: bold; }
+.lives { gap: 4px; background: none; padding: 0;}
+.heart { font-size: 20px; color: #dc3545; animation: heartbeat 1.5s ease-in-out infinite; }
+@keyframes heartbeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+
+/* --- 問題表示エリア --- */
+.problem-display-area { width: 95%; max-width: 500px; margin-bottom: 25px; }
+.transaction-text-box { padding: 20px 25px; border: 2px solid #90a4ae; background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.08); min-height: 100px; display: flex; justify-content: center; align-items: center; text-align: center; }
+.transaction-text-box p { font-size: 1.2em; line-height: 1.7; color: #333; margin: 0; font-family: 'Noto Sans JP', sans-serif; }
+
+/* --- ★ 選択肢エリアとボタン (再修正) ★ --- */
+.choices-area { width: 100%; max-width: 500px; }
+/* choicesコンテナのスタイルを再定義 */
+.choices {
+    display: grid;
+    grid-template-columns: 1fr; /* デフォルト縦1列 */
+    gap: 12px;
+    width: 100%;
+    margin: 0 auto;
 }
-.success {
-  color: green;
+/* 画面幅に応じて列数を変更 (任意) - 前回のまま */
+@media (min-width: 500px) {
+    .choices { grid-template-columns: repeat(3, 1fr); }
 }
-.error {
-  color: red;
+/* choice-buttonスタイルを再定義 */
+.choice-button {
+    padding: 15px 10px;
+    font-size: 1.05em;
+    font-weight: 600;
+    color: #34495e;
+    background-color: #ffffff;
+    border: 2px solid #bdc3c7;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+    text-align: center;
+    box-shadow: 0 3px 5px rgba(0,0,0,0.07);
+    /* ★ 表示に必要なスタイルを確保 ★ */
+    display: block; /* blockレベル要素として表示 */
+    visibility: visible; /* 見えるように */
+    opacity: 1; /* 透明度なし */
+    height: auto; /* 高さを自動に */
+    overflow: visible; /* はみ出し許可 */
+    position: relative; /* 相対位置 */
 }
+.choice-button:hover:not(:disabled) { background-color: #ecf0f1; border-color: #3498db; }
+.choice-button:active:not(:disabled) { transform: scale(0.98); }
+.choice-button:disabled { background-color: #e9ecef; border-color: #ced4da; color: #6c757d; cursor: not-allowed; opacity: 0.8; }
+/* トランジション用スタイル削除 (transition-group を削除したため) */
+/* .choice-list-enter-active, ... etc ... */
+
+
+/* --- メッセージエリア --- */
+.message-area { margin-top: 15px; min-height: 30px; width: 100%; text-align: center; }
+.feedback-fade-enter-active, .feedback-fade-leave-active { transition: opacity 0.3s ease; }
+.feedback-fade-enter, .feedback-fade-leave-to { opacity: 0; }
+.message-area p { font-weight: bold; padding: 8px 18px; border-radius: 15px; display: inline-block; font-size: 1.1em; animation: messageFadeIn 0.4s ease; }
+@keyframes messageFadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+.message-area .success { background-color: rgba(46, 204, 113, 0.9); color: white; }
+.message-area .error { background-color: rgba(231, 76, 60, 0.9); color: white; }
+
+/* --- ゲームオーバー表示 --- */
+.game-over-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; border-radius: 12px; opacity: 0; animation: fadeInOverlay 0.5s ease forwards; }
+@keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
+.game-over-modal { background-color: white; padding: 35px 45px; border-radius: 10px; box-shadow: 0 8px 20px rgba(0,0,0,0.3); text-align: center; transform: scale(0.8); animation: zoomInModal 0.4s 0.2s ease forwards; }
+@keyframes zoomInModal { from { opacity:0; transform: scale(0.8); } to { opacity:1; transform: scale(1); } }
+.game-over-modal h2 { color: #dc3545; margin-top: 0; font-size: 1.8em; }
+.game-over-modal p { font-size: 1.1em; margin: 10px 0 15px; }
+.redirect-message { font-size: 1em; color: #666; margin-top: 20px; font-style: italic; }
+
 </style>
