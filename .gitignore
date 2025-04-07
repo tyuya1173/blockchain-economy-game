@@ -13,7 +13,7 @@ node_modules/
 /firebase-error.log
 
 # Firebaseの設定ファイル（機密情報を含むためコミットしない）
-/src/firebase/index.js
+#sc/firebase/index.js
 
 # ローカル環境用の設定ファイル（環境変数を管理）
 .env

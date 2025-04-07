@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "blockchain-economy-game"
-  }
+    "default": "blockchain-economy-game",
+    "dev": "blockchain-economy-game"
+  },
+  "targets": {},
+  "etags": {}
 }
