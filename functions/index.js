@@ -8,7 +8,7 @@ admin.initializeApp();
 const marketFunctions = require('./market/priceUpdater');
 const adminFunctions = require('./admin/gameControl');
 const miningFunctions = require('./mining/rewardDistributor');
-const tradingFunctions = require('./trading/ledgerRecorder');
+const tradingFunctions = require('./trading/tradeRoom');
 const userFunctions = require('./admin/userManagement');
 
 // Export all functions

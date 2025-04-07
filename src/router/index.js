@@ -6,9 +6,10 @@ import LoginView from '../views/LoginView.vue'
 // import RegisterView from '../views/RegisterView.vue'
 import DashboardView from '../views/DashboardView.vue'
 // import MiningView from '../views/MiningView.vue'
-// import TradingView from '../views/TradingView.vue'
+import TradingView from '../views/TradingView.vue'
 import MarketView from '../views/MarketView.vue'
 import AdminView from '../views/AdminView.vue'
+import TradeRoomView from '../views/TradeRoomView.vue'
 
 Vue.use(VueRouter)
 
@@ -41,12 +42,12 @@ const routes = [
   //   component: MiningView,
   //   meta: { requiresAuth: true }
   // },
-  // {
-  //   path: '/trading',
-  //   name: 'trading',
-  //   component: TradingView,
-  //   meta: { requiresAuth: true }
-  // },
+  {
+    path: '/trading',
+    name: 'trading',
+    component: TradingView,
+    meta: { requiresAuth: true }
+  },
   {
     path: '/market',
     name: 'market',
@@ -58,6 +59,11 @@ const routes = [
     name: 'admin',
     component: AdminView,
     meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/trade-room/:roomId',
+    name: 'TradeRoomView',
+    component: TradeRoomView,
   }
 ]
 
