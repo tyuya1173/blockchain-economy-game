@@ -1,4 +1,6 @@
 // functions/mining/rewardDistributor.js
+import { getAuth } from 'firebase/auth'; // ユーザー情報を取得する関数
+
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const db = admin.firestore();
@@ -8,7 +10,11 @@ module.exports = {
     .document('miningChallenges/{challengeId}/submissions/{submissionId}')
     .onCreate(async (snap, context) => {
       try {
+        const auth = getAuth();
+        const user = auth.currentUser;
+        const userId = user.uid;
         const submission = snap.data();
+        console.log('New submission:', submission);
         const userRef = db.collection('users').doc(submission.userId);
         const userDoc = await userRef.get();
 

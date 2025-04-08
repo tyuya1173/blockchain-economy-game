@@ -184,6 +184,7 @@ export default {
       this.timer = null;
       this.isGameOver = true; // ゲームオーバー状態にする
       // message はモーダルで表示するのでここでは設定しない
+      this.$emit('game-completed', { score: this.score });
 
       // --- ★ 指定時間後に /mining へ遷移 ---
       setTimeout(() => {
@@ -289,7 +290,7 @@ export default {
         const targetBlock = this.blockchain[tamperedIndex];
 
         // 1. データを改ざん
-        targetBlock.data = `データ - ${Math.random().toString(16).substring(2, 6)}`;
+        targetBlock.data = `aデータ - ${Math.random().toString(16).substring(2, 6)}`;
         // 2. 連結データ文字列も更新（表示は変える）
         targetBlock.blockDataString = this.createBlockDataString(targetBlock);
         // 3. targetBlock.hash (内部的なハッシュ値) は変更 *しない*！ -> これでデータとハッシュが不一致になる

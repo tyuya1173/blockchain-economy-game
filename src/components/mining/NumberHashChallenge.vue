@@ -127,7 +127,7 @@ export default {
       this.isGameOver = false;       // ゲームオーバーフラグを解除
     },
     // ゲーム状態を初期値にリセット
-    resetGame() {
+    resetGame: function() {
       this.timeLeft = this.maxTime;
       this.lives = 3;
       this.score = 0;
@@ -145,7 +145,7 @@ export default {
       }
     },
     // タイマーを開始またはリセット＆開始
-    startTimer() {
+    startTimer: function() {
        if (this.timer) clearInterval(this.timer); // 既存タイマークリア
        this.timeLeft = this.maxTime; // 時間をリセット
        console.log(`Timer started/reset: ${this.timeLeft}s`);
@@ -165,12 +165,15 @@ export default {
     },
 
     // --- ★ ゲームオーバー処理 (ページ遷移) ★ ---
-    endGame() {
+    endGame: function() {
       console.log("Game Over! Redirecting soon...");
       if (this.timer) clearInterval(this.timer); // タイマー停止
       this.timer = null;
       this.isGameOver = true; // ゲームオーバー状態にする
+      console.log("Game completed, score:", this.score);
 
+      this.$emit('game-completed', { score: this.score });
+      
       // 指定時間後に /mining へ遷移
       setTimeout(() => {
           // Vue Routerの存在を確認して使用
@@ -188,7 +191,7 @@ export default {
     // --- 問題生成メソッド ---
 
     // 最初の問題を準備
-    prepareFirstQuestion() {
+    prepareFirstQuestion: function() {
         // 最初の「前のブロック」は完成状態で生成
         this.previousBlock = this.createDummyBlock(null, true);
         // 最初の「現在のブロック」（問題）を生成
@@ -198,7 +201,7 @@ export default {
     },
 
     // 新しいブロックデータ（問題）を生成
-    generateNewBlockData(prevBlock) {
+    generateNewBlockData: function(prevBlock) {
         const newTimestamp = this.generateTimestamp(prevBlock?.timestamp); // 前のブロックのタイムスタンプを基準にする
         // 穴埋め箇所をランダムに決定 ('previousHash' または 'timestamp')
         const missingField = Math.random() < 0.6 ? 'previousHash' : 'timestamp';
@@ -214,7 +217,7 @@ export default {
     },
 
     // 与えられたブロックデータから正解と選択肢を準備
-    prepareChoicesAndAnswer(blockData) {
+    prepareChoicesAndAnswer: function(blockData) {
        // 穴埋め対象フィールドに応じて正解を設定
        if (blockData.missingField === 'previousHash') {
            this.correctAnswer = blockData.previousHash;
@@ -230,7 +233,7 @@ export default {
     },
 
     // ダミーのブロックデータを生成（主に初期表示用）
-    createDummyBlock(previousTimestamp, isComplete = false) {
+    createDummyBlock: function(previousTimestamp, isComplete = false) {
         const timestamp = this.generateTimestamp(previousTimestamp);
         const prevHash = previousTimestamp ? this.generateRandomHash() : 'genesis';
         const block = {
@@ -248,7 +251,7 @@ export default {
     },
 
     // 正解とダミーを含む選択肢の配列を生成
-    generateChoices(correctAnswer, fieldType) {
+    generateChoices: function(correctAnswer, fieldType) {
       const choices = new Set([correctAnswer]); // Setで重複を防ぐ
       while (choices.size < 3) { // 合計3つの選択肢になるまでループ
         let dummyAnswer;
@@ -288,7 +291,7 @@ export default {
     // --- 回答処理メソッド ---
 
     // プレイヤーが選択肢をクリックした時の処理
-    submitAnswer(choice) {
+    submitAnswer: function(choice) {
        // アニメーション中、処理中、ゲームオーバーなら何もしない
        if (this.isAnimating || this.isSubmitting || this.isGameOver) return;
        this.isSubmitting = true; // 処理開始フラグ
@@ -315,7 +318,7 @@ export default {
     },
 
     // 正解時の処理
-    handleCorrect() {
+    handleCorrect: function () {
       console.log("正解！");
       this.consecutiveCorrect++; // 連続正解数を増やす
       const timeBonus = this.timeLeft * 5; // 時間ボーナス計算

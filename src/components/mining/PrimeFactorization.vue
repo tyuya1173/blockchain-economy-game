@@ -21,7 +21,7 @@
     </div>
 
     <div class="choices-area" v-if="currentTransaction && !isGameOver">
-       <div class="choices" v-if="choices && choices.length > 0">
+        <div class="choices" v-if="choices && choices.length > 0">
           <button
             v-for="(choice) in choices"
             :key="choice.key"
@@ -31,10 +31,10 @@
           >
             {{ choice.text }}
           </button>
-       </div>
-       <div v-else>
-         <p>選択肢を生成中...</p>
-       </div>
+        </div>
+        <div v-else>
+          <p>選択肢を生成中...</p>
+        </div>
     </div>
 
     <div class="message-area">
@@ -44,11 +44,11 @@
     </div>
 
      <div class="game-over-overlay" v-if="isGameOver">
-          <div class="game-over-modal">
-            <h2>GAME OVER</h2>
-            <p>最終スコア: {{ score }}</p>
-            <p class="redirect-message">まもなくマイニングページに戻ります...</p>
-        </div>
+         <div class="game-over-modal">
+             <h2>GAME OVER</h2>
+             <p>最終スコア: {{ score }}</p>
+             <p class="redirect-message">まもなくマイニングページに戻ります...</p>
+         </div>
      </div>
   </div>
 </template>
@@ -58,7 +58,7 @@
 
 // --- 定数定義 ---
 const INITIAL_LIVES = 3;
-const INITIAL_MAX_TIME = 5;
+const INITIAL_MAX_TIME = 5; // 時間制限を短く設定 (テスト用) -> 元に戻す場合は 15 や 20 など
 const POINTS_PER_CORRECT = 100;
 const REDIRECT_DELAY = 3000;
 const FEEDBACK_DURATION = 700;
@@ -69,7 +69,7 @@ const CURRENCIES = ["コイン", "トークン", "ポイント", "ETH", "BTC"];
 const ITEMS = ["クリスタルソード", "ポーション", "NFTアート#123", "土地(区画A)"];
 
 export default {
-  name: "TransactionMatcherGameStyledVue2",
+  name: "TransactionMatcherGameStyledVue2", // コンポーネント名はこのままにしておきます
   data: function () {
     return {
       currentTransaction: null,
@@ -119,9 +119,20 @@ export default {
       if (this.timer) clearInterval(this.timer);
       this.timer = null;
       this.isGameOver = true;
+
+      // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+      // ★ 変更点: ゲームオーバー時にイベントを発行 ★
+      // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+      console.log(`Emitting game-completed event with score: ${this.score}`);
+      this.$emit('game-completed', { score: this.score });
+      // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+      // ★ ここまで変更点                           ★
+      // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
+      // 3秒後にリダイレクト
       setTimeout(() => {
           if (this.$router) { this.$router.push('/mining'); }
-          else { window.location.href = '/mining'; }
+          else { window.location.href = '/mining'; } // フォールバック
       }, REDIRECT_DELAY);
     },
 
@@ -139,14 +150,14 @@ export default {
 
         if (isItemTransfer) {
             currencyOrItem = ITEMS[Math.floor(Math.random() * ITEMS.length)];
-            amount = 1;
+            amount = 1; // アイテムは通常1つ
             transactionText = `記録 [Block #${blockNum}]: ${sender} が ${receiver} へアイテム「${currencyOrItem}」を譲渡。`;
-            correctChoiceText = `${sender} → ${receiver} : ${currencyOrItem}`;
+            correctChoiceText = `${sender} → ${receiver} : ${currencyOrItem}`; // アイテム名をそのまま表示
         } else {
             currencyOrItem = CURRENCIES[Math.floor(Math.random() * CURRENCIES.length)];
-            amount = Math.floor(Math.random() * 991) + 10;
+            amount = Math.floor(Math.random() * 991) + 10; // 10から1000
             transactionText = `承認 [Block #${blockNum}]: ${sender} から ${receiver} に ${amount} ${currencyOrItem} を送金。`;
-            correctChoiceText = `${sender} → ${receiver} : ${amount}`;
+            correctChoiceText = `${sender} → ${receiver} : ${amount}`; // 金額のみ表示
         }
         this.currentTransaction = { text: transactionText, sender: sender, receiver: receiver, amount: amount, unit: currencyOrItem, key: `tx-${this.problemCounter}` };
         this.choices = this.generateChoices(sender, receiver, amount, currencyOrItem, correctChoiceText, isItemTransfer);
@@ -156,62 +167,95 @@ export default {
     generateChoices: function (sender, receiver, amount, unit, correctText, isItem) {
         const choicesSet = new Set();
         choicesSet.add(JSON.stringify({ text: correctText, isCorrect: true, key: `choice-${this.problemCounter}-0` }));
+
+        // ダミー選択肢生成ロジック (簡略化・修正の可能性あり)
         while (choicesSet.size < 3) {
             let dSender = sender, dReceiver = receiver, dAmount = amount, dUnit = unit, wrongText = '';
-            const changeType = Math.random();
-            if (changeType < 0.33) {
-                if (Math.random() < 0.5) { [dSender, dReceiver] = [receiver, sender]; }
-                else { let wIdx = Math.floor(Math.random() * NAMES.length); while(NAMES[wIdx] === sender || NAMES[wIdx] === receiver){ wIdx = Math.floor(Math.random() * NAMES.length); } if(Math.random() < 0.5) dSender = NAMES[wIdx]; else dReceiver = NAMES[wIdx]; }
-            } else if (changeType < 0.66) {
-                if (!isItem) { dAmount = Math.floor(Math.random() * 991) + 10; while(dAmount === amount) dAmount = Math.floor(Math.random() * 991) + 10; if(Math.random() < 0.2) dUnit = CURRENCIES[Math.floor(Math.random() * CURRENCIES.length)]; }
-                else { dUnit = ITEMS[Math.floor(Math.random() * ITEMS.length)]; while(dUnit === unit) dUnit = ITEMS[Math.floor(Math.random() * ITEMS.length)]; }
-            } else {
-                let wrongNameIndex = Math.floor(Math.random() * NAMES.length); while(NAMES[wrongNameIndex] === sender || NAMES[wrongNameIndex] === receiver){ wrongNameIndex = Math.floor(Math.random() * NAMES.length); }
-                dReceiver = NAMES[wrongNameIndex];
-                if (!isItem) { dAmount = Math.floor(Math.random() * 991) + 10; while(dAmount === amount) dAmount = Math.floor(Math.random() * 991) + 10; }
-                 else { dUnit = ITEMS[Math.floor(Math.random() * ITEMS.length)]; while(dUnit === unit) dUnit = ITEMS[Math.floor(Math.random() * ITEMS.length)]; }
+            const changeType = Math.random(); // 変更タイプを決定
+
+            if (changeType < 0.33) { // 送信者/受信者を変更
+                if (Math.random() < 0.5) { [dSender, dReceiver] = [receiver, sender]; } // 入れ替え
+                else { // 別の人にする
+                    let wIdx = Math.floor(Math.random() * NAMES.length);
+                    while(NAMES[wIdx] === sender || NAMES[wIdx] === receiver){ wIdx = Math.floor(Math.random() * NAMES.length); }
+                    if(Math.random() < 0.5) dSender = NAMES[wIdx]; else dReceiver = NAMES[wIdx];
+                }
+            } else if (changeType < 0.66) { // 金額/アイテムを変更
+                 if (!isItem) { // 金額の場合
+                     dAmount = Math.floor(Math.random() * 991) + 10;
+                     while(dAmount === amount) dAmount = Math.floor(Math.random() * 991) + 10;
+                     // 低確率で通貨単位も変える
+                     if(Math.random() < 0.2) dUnit = CURRENCIES[Math.floor(Math.random() * CURRENCIES.length)];
+                 } else { // アイテムの場合
+                     dUnit = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+                     while(dUnit === unit) dUnit = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+                 }
+            } else { // 複合的に変更 (例: 受信者と金額/アイテム)
+                 let wrongNameIndex = Math.floor(Math.random() * NAMES.length);
+                 while(NAMES[wrongNameIndex] === sender || NAMES[wrongNameIndex] === receiver){ wrongNameIndex = Math.floor(Math.random() * NAMES.length); }
+                 dReceiver = NAMES[wrongNameIndex]; // 受信者を変更
+
+                 if (!isItem) {
+                     dAmount = Math.floor(Math.random() * 991) + 10;
+                     while(dAmount === amount) dAmount = Math.floor(Math.random() * 991) + 10;
+                 } else {
+                     dUnit = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+                     while(dUnit === unit) dUnit = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+                 }
             }
+
+            // ダミーテキスト生成
             if (isItem) { wrongText = `${dSender} → ${dReceiver} : ${dUnit}`; }
-            else { wrongText = `${dSender} → ${dReceiver} : ${dAmount}`; }
+            else { wrongText = `${dSender} → ${dReceiver} : ${dAmount}`; } // 金額のみ表示
+
             choicesSet.add(JSON.stringify({ text: wrongText, isCorrect: false, key: `choice-${this.problemCounter}-${choicesSet.size}` }));
         }
+
         const finalChoices = Array.from(choicesSet).map(s => JSON.parse(s));
-        return this.shuffleArray(finalChoices);
+        return this.shuffleArray(finalChoices); // 選択肢をシャッフル
     },
 
     // --- 回答処理 ---
     submitAnswer: function (selectedChoice) {
       if (this.isGameOver || this.isSubmitting) return;
       this.isSubmitting = true;
-      if(this.timer) clearInterval(this.timer);
+      if(this.timer) clearInterval(this.timer); // タイマー停止
 
       const isCorrect = selectedChoice.isCorrect;
 
+      // フィードバックメッセージ設定
       this.feedbackMessage = isCorrect ? "承認!" : "拒否!";
       this.feedbackMessageType = isCorrect ? 'success' : 'error';
 
       if (isCorrect) { this.handleCorrect(); }
-      else { this.handleIncorrect(false); }
+      else { this.handleIncorrect(false); } // 間違い
 
+      // 短いディレイ後、次の問題へ or ゲームオーバー処理
       setTimeout(() => {
-          this.feedbackMessage = null;
-           if (!this.isGameOver) {
-                this.generateProblem();
-                this.isSubmitting = false;
-                this.startTimer();
-           }
-      }, FEEDBACK_DURATION);
+          this.feedbackMessage = null; // フィードバックメッセージを消す
+          // ゲームオーバーでなければ次の問題へ
+          if (!this.isGameOver) {
+              this.generateProblem();
+              this.isSubmitting = false; // 送信フラグ解除
+              this.startTimer(); // タイマー再開
+          }
+      }, FEEDBACK_DURATION); // FEEDBACK_DURATION後に実行
     },
     handleCorrect: function () {
         console.log("Correct!");
-        this.score += POINTS_PER_CORRECT + Math.max(0, Math.floor(this.timeLeft / 5));
+        // スコア計算 (残り時間ボーナスを追加)
+        this.score += POINTS_PER_CORRECT + Math.max(0, Math.floor(this.timeLeft / 5)); // 例: 5秒ごとに1点ボーナス
+        // isSubmitting 解除やタイマー再開は submitAnswer の setTimeout 後に行う
     },
     handleIncorrect: function (isTimeout = false) {
-        if (this.isGameOver) return;
+        if (this.isGameOver) return; // すでにゲームオーバーなら何もしない
         console.log(isTimeout ? "Incorrect: Time's up!" : "Incorrect: Wrong choice.");
         this.lives--;
-        if (this.lives <= 0) { this.endGame(); }
-        // isSubmitting と タイマー再開は呼び出し元の setTimeout 後に行う
+        // ライフがなくなったらゲームオーバー
+        if (this.lives <= 0) {
+            this.endGame();
+        }
+        // isSubmitting 解除やタイマー再開は submitAnswer の setTimeout 後に行う
     },
 
     // --- ヘルパー関数 ---
@@ -227,17 +271,19 @@ export default {
   // --- ライフサイクルフック ---
   mounted: function () {
     console.log("TransactionMatcherGame component mounted (Vue 2 Styled).");
-    this.initializeGame();
+    this.initializeGame(); // マウント時にゲーム初期化
   },
   beforeDestroy: function () {
     console.log("TransactionMatcherGame component destroying (Vue 2 Styled), clearing timer.");
-    if (this.timer) { clearInterval(this.timer); }
+    if (this.timer) {
+      clearInterval(this.timer); // コンポーネント破棄時にタイマー解除
+    }
   }
 };
 </script>
 
 <style scoped>
-/* ★★★ 改ざん発見ゲームのスタイルをベースに適用 ★★★ */
+/* ★★★ スタイルは変更なし ★★★ */
 
 /* --- 基本スタイル --- */
 .tamper-game-container { display: flex; flex-direction: column; align-items: center; gap: 15px; padding: 20px; font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; max-width: 100%; margin: auto; background-color: #e9eff1; border-radius: 12px; box-shadow: 0 6px 12px rgba(0,0,0,0.1); position: relative; box-sizing: border-box; }
