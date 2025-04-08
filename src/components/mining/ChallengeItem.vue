@@ -22,20 +22,17 @@ export default {
       rewardsInfo: [
         {
           challengeName: 'クイズチャレンジ',
-          icon: '❓',
-          reward: 'トークン 10 ~ 50', // 例: 範囲表示
+          reward: 'スコアの5％', // 例: 範囲表示
           difficulty: 'easy' // 参考情報
         },
         {
-          challengeName: 'ナンバーハッシュチャレンジ',
-          icon: '🔢',
-          reward: 'トークン 30 ~ 100',
+          challengeName: '改ざんブロックを探せ！',
+          reward: 'スコアの1%',
           difficulty: 'medium'
         },
         {
-          challengeName: 'パターンマッチングチャレンジ (素因数分解)', // 仮称
-          icon: '🧩',
-          reward: 'トークン 50 ~ 200',
+          challengeName: 'トランザクション・マッチャー', // 仮称
+          reward: 'スコアの1%',
           difficulty: 'hard'
         },
         // 他のチャレンジがあれば追加

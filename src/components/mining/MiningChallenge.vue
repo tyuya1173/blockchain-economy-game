@@ -5,13 +5,13 @@
         <h1>Mining Challenge</h1>
         <div class="challenge-item-list">
           <router-link to="/number-hash-challenge" class="challenge-link">
-            ナンバーハッシュチャレンジ
+            クイズチャレンジ
           </router-link>
           <router-link to="/computer-sciense" class="challenge-link">
-            コンピュータサイエンス
+            改ざんブロック探索
           </router-link>
           <router-link to="/prime-factorization" class="challenge-link">
-            暗号解読
+            トランザクション・マッチャー
           </router-link>
         </div>
       </div>

@@ -72,7 +72,24 @@ export default {
 
         // 必要であれば、少し待ってからメッセージをクリアしたり、他の画面に遷移したりする
         // setTimeout(() => { this.$router.push('/mining'); }, 2000);
+        try {
+            const cooldownMinutes = 5; // 例: 5分間のクールダウン（ゲームごとに変えてもOK）
+            const cooldownDurationMs = cooldownMinutes * 60 * 1000;
+            const cooldownEndTime = Timestamp.fromMillis(Date.now() + cooldownDurationMs); // Firestore Timestamp型
 
+            // users/{userId} ドキュメントへの参照を取得
+            const userDocRef = doc(db, 'users', userId);
+
+            // challengeCooldowns マップフィールド内の該当チャレンジIDの値を更新
+            await updateDoc(userDocRef, {
+                [`challengeCooldowns.${challengeType}`]: cooldownEndTime
+            });
+            console.log(`[${challengeType}] Cooldown end time saved to user profile:`, cooldownEndTime.toDate());
+
+        } catch (cooldownError) {
+            console.error(`[${challengeType}] Failed to save cooldown time:`, cooldownError);
+            // クールダウン設定のエラーは続行しても良いかもしれない
+        }
       } catch (error) {
         console.error("Error submitting prime factorization challenge result:", error);
         this.message = 'エラーが発生し、結果を送信できませんでした。';

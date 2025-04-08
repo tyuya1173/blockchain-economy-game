@@ -1,5 +1,6 @@
 <template>
   <div class="game-container">
+    <h1>クイズチャレンジ</h1>
     <div class="status-bar">
       <div class="timer-container">
         <div class="timer-bar" :style="{ width: `${(timeLeft / maxTime) * 100}%` }"></div>
