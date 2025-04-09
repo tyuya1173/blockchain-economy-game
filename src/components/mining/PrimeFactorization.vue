@@ -254,6 +254,8 @@ export default {
         // ライフがなくなったらゲームオーバー
         if (this.lives <= 0) {
             this.endGame();
+        }else {
+          this.startTimer(); // タイマー再開
         }
         // isSubmitting 解除やタイマー再開は submitAnswer の setTimeout 後に行う
     },

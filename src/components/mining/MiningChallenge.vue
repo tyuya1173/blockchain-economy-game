@@ -16,8 +16,6 @@
         </div>
       </div>
     </div>
-    <ChallengeTimer v-if="cooldown" />
-    <MiningHistory />
   </div>
 </template>
 
